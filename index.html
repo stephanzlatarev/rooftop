@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rooftop Revolution</title>
+    <!-- Include CesiumJS for 3D building viewer -->
+    <script src="https://cesium.com/downloads/cesiumjs/releases/1.133/Build/Cesium/Cesium.js"></script>
+    <link href="https://cesium.com/downloads/cesiumjs/releases/1.133/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background-color: #4285f4;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        
+        .content {
+            padding: 20px;
+        }
+        
+        .form-section {
+            margin-bottom: 20px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        input[type="text"], input[type="number"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        
+        input[readonly] {
+            background-color: #f9f9f9;
+        }
+        
+        .maps-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .map-container {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .map-title {
+            background-color: #f8f9fa;
+            padding: 8px 12px;
+            border-bottom: 1px solid #ddd;
+            font-weight: bold;
+            font-size: 14px;
+            color: #333;
+        }
+        
+        #map, #cesiumContainer {
+            height: 400px;
+            width: 100%;
+        }
+        
+        .viewer-info {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 4px;
+            padding: 10px;
+            margin: 10px 0;
+            font-size: 14px;
+        }
+        
+        .sync-status {
+            text-align: center;
+            margin: 10px 0;
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        
+        .sync-active {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .sync-inactive {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f1b0b7;
+        }
+        
+        .instructions {
+            background-color: #e8f0fe;
+            border-left: 4px solid #4285f4;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 0 4px 4px 0;
+        }
+        
+        .coordinates-display {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .submit-section {
+            text-align: center;
+            margin-top: 30px;
+        }
+        
+        .submit-btn {
+            background-color: #34a853;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .submit-btn:hover {
+            background-color: #2d8f47;
+        }
+        
+        .submit-btn:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .clear-btn {
+            background-color: #ea4335;
+            color: white;
+            padding: 8px 20px;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+            margin-left: 10px;
+            transition: background-color 0.3s;
+        }
+        
+        .clear-btn:hover {
+            background-color: #d23b2c;
+        }
+        
+        .status-message {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 4px;
+            display: none;
+        }
+        
+        .status-success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status-error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f1b0b7;
+        }
+        
+        @media (max-width: 1024px) {
+            .maps-container {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .coordinates-display {
+                grid-template-columns: 1fr;
+            }
+            
+            .container {
+                margin: 10px;
+            }
+            
+            .content {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Rooftop Revolution</h1>
+        </div>
+        
+        <div class="content">
+            <form id="coordinatesForm">
+                <div class="instructions">
+                    <strong>Instructions:</strong> Click anywhere on the map to select your rooftop location in the Netherlands. The coordinates will be synchronized between both viewers and prefilled in the form. The 3D viewer shows detailed building models from the 3DBAG dataset.
+                </div>
+                
+                <div class="maps-container">
+                    <div class="map-container">
+                        <div class="map-title">Google Maps - Street View</div>
+                        <div id="map"></div>
+                    </div>
+                    
+                    <div class="map-container">
+                        <div class="map-title">3D Buildings - Netherlands</div>
+                        <div id="cesiumContainer"></div>
+                    </div>
+                </div>
+                
+                <div id="syncStatus" class="sync-status sync-inactive">
+                    📡 Map synchronization: Waiting for location selection
+                </div>
+                
+                <div class="form-section">
+                    <div class="coordinates-display">
+                        <div class="form-group">
+                            <label for="latitude">Latitude:</label>
+                            <input type="number" id="latitude" name="latitude" step="any" readonly placeholder="Click on map to select">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="longitude">Longitude:</label>
+                            <input type="number" id="longitude" name="longitude" step="any" readonly placeholder="Click on map to select">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="submit-section">
+                    <button type="submit" class="submit-btn" id="submitBtn" disabled>
+                        Open Questionnaire
+                    </button>
+                </div>
+                
+                <div id="statusMessage" class="status-message"></div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const MIN_ZOOM = 12;
+        const MAX_ZOOM = 19;
+        const ZOOM_BASE_HEIGHT = 150;
+
+        let map;
+        let cesiumViewer;
+        let marker;
+        let cesiumMarker;
+        let selectedCoordinates = null;
+        let isUpdatingFromSync = false;
+
+        function heightToZoom(height) {
+            return Math.min(Math.max(MAX_ZOOM - Math.log2(height / ZOOM_BASE_HEIGHT), MIN_ZOOM), MAX_ZOOM);
+        }
+        function zoomToHeight(zoom) {
+            zoom = Math.min(Math.max(zoom, MIN_ZOOM), MAX_ZOOM);
+            return ZOOM_BASE_HEIGHT * Math.pow(2, MAX_ZOOM - zoom);
+        }
+
+        function cesiumLatitude(lat, altitude) {
+            const zoom = Math.round(heightToZoom(altitude));
+            switch (zoom) {
+                case 12: return lat - 0.064;
+                case 13: return lat - 0.032;
+                case 14: return lat - 0.016;
+                case 15: return lat - 0.008;
+                case 16: return lat - 0.003;
+                case 17: return lat - 0.0015;
+                case 18: return lat - 0.0007;
+                case 19: return lat - 0.0003;
+            }
+            return lat;
+        }
+
+        // Initialize both maps
+        function initMap() {
+            // Default to Amsterdam, Netherlands (better for 3DBAG coverage)
+            const defaultLocation = { lat: 52.3676, lng: 4.9041 }; // Amsterdam
+            
+            initGoogleMap(defaultLocation);
+            initCesiumViewer(defaultLocation);
+        }
+
+        // Initialize Google Maps
+        function initGoogleMap(defaultLocation) {
+            map = new google.maps.Map(document.getElementById('map'), {
+                zoom: 15,
+                center: defaultLocation,
+                mapTypeControl: true,
+                streetViewControl: true,
+                fullscreenControl: true,
+                zoomControl: true,
+            });
+
+            // Add search box
+            const input = document.createElement('input');
+            input.className = 'controls';
+            input.type = 'text';
+            input.placeholder = 'Search for a location';
+            input.style.cssText = `
+                box-sizing: border-box;
+                border: 1px solid transparent;
+                width: 240px;
+                height: 32px;
+                padding: 0 12px;
+                border-radius: 3px;
+                box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+                font-size: 14px;
+                outline: none;
+                text-overflow: ellipses;
+                position: absolute;
+                top: 10px;
+                left: 10px;
+                background-color: #fff;
+            `;
+
+            map.controls[google.maps.ControlPosition.TOP_LEFT].push(input);
+
+            const searchBox = new google.maps.places.SearchBox(input);
+
+            // Bias the SearchBox results towards current map's viewport
+            map.addListener('bounds_changed', () => {
+                searchBox.setBounds(map.getBounds());
+            });
+
+            // Listen for the event fired when the user selects a prediction
+            searchBox.addListener('places_changed', () => {
+                const places = searchBox.getPlaces();
+
+                if (places.length == 0) {
+                    return;
+                }
+
+                // For each place, get the location
+                const bounds = new google.maps.LatLngBounds();
+                places.forEach((place) => {
+                    if (!place.geometry || !place.geometry.location) {
+                        console.log("Returned place contains no geometry");
+                        return;
+                    }
+
+                    // Set marker at the searched location
+                    setMarker(place.geometry.location);
+
+                    if (place.geometry.viewport) {
+                        bounds.union(place.geometry.viewport);
+                    } else {
+                        bounds.extend(place.geometry.location);
+                    }
+                });
+                map.fitBounds(bounds);
+            });
+
+            // Add click listener to map
+            map.addListener('click', (event) => {
+                setMarker(event.latLng, 'google');
+            });
+            
+            // Add zoom change listener for synchronization
+            map.addListener('zoom_changed', () => {
+                if (!isUpdatingFromSync && cesiumViewer) {
+                    syncZoomToCesium(map.getZoom());
+                }
+            });
+        }
+
+        // Initialize Cesium 3D Viewer
+        function initCesiumViewer(defaultLocation) {
+            // Set Cesium Ion access token (you'll need to get your own)
+            Cesium.Ion.defaultAccessToken = 'YOUR_CESIUM_ION_TOKEN';
+            
+            try {
+                cesiumViewer = new Cesium.Viewer('cesiumContainer', {
+                    terrain: Cesium.Terrain.fromWorldTerrain(),
+                    baseLayerPicker: false,
+                    geocoder: false,
+                    homeButton: false,
+                    sceneModePicker: false,
+                    navigationHelpButton: false,
+                    animation: false,
+                    timeline: false,
+                    fullscreenButton: false,
+                    vrButton: false
+                });
+                
+                // Set background to white for better building visibility
+                cesiumViewer.scene.backgroundColor = Cesium.Color.WHITE;
+                cesiumViewer.scene.globe.baseColor = Cesium.Color.WHITE;
+                cesiumViewer.scene.skyBox = undefined;
+                
+                // Basic atmosphere settings (always applied)
+                cesiumViewer.scene.skyAtmosphere.show = false;
+                cesiumViewer.scene.fog.enabled = false;
+                
+                // Initialize with basic lighting (will be optimized based on zoom)
+                initializeLighting();
+                
+                // Load 3DBAG 3D Tiles
+                load3DBagTiles();
+                
+                // Set initial camera position over Netherlands
+                cesiumViewer.camera.setView({
+                    destination: Cesium.Cartesian3.fromDegrees(
+                        defaultLocation.lng, 
+                        cesiumLatitude(defaultLocation.lat, 2400), 
+                        2400
+                    ),
+                    orientation: {
+                        heading: 0.0,                           // North up
+                        pitch: -0.8 * Cesium.Math.PI_OVER_TWO,  // 80% toward top-down (-72°)
+                        roll: 0.0                               // Level
+                    }
+                });
+                
+                // Add click handler for Cesium viewer
+                cesiumViewer.cesiumWidget.canvas.addEventListener('click', function(event) {
+                    const pickedObject = cesiumViewer.scene.pick(cesiumViewer.camera.getPickRay(event));
+                    if (pickedObject) {
+                        const cartesian = cesiumViewer.camera.pickEllipsoid(event, cesiumViewer.scene.globe.ellipsoid);
+                        if (cartesian) {
+                            const cartographic = Cesium.Cartographic.fromCartesian(cartesian);
+                            const longitude = Cesium.Math.toDegrees(cartographic.longitude);
+                            const latitude = Cesium.Math.toDegrees(cartographic.latitude);
+                            
+                            setMarker({lat: latitude, lng: longitude}, 'cesium');
+                        }
+                    }
+                });
+                
+                // Add camera change listener for zoom synchronization and lighting optimization
+                cesiumViewer.camera.changed.addEventListener(() => {
+                    if (!isUpdatingFromSync && map) {
+                        syncZoomToGoogle();
+                    }
+                    // Optimize lighting based on zoom level
+                    optimizeLightingForZoom();
+                });
+                
+                updateSyncStatus('✅ 3D viewer loaded successfully', true);
+                
+            } catch (error) {
+                console.error('Error initializing Cesium viewer:', error);
+                updateSyncStatus('❌ 3D viewer failed to load', false);
+                
+                // Show fallback message in Cesium container
+                document.getElementById('cesiumContainer').innerHTML = `
+                    <div style="display: flex; align-items: center; justify-content: center; height: 100%; background-color: #f8f9fa; color: #666; text-align: center; padding: 20px;">
+                        <div>
+                            <h3>3D Viewer Unavailable</h3>
+                            <p>Please add your Cesium Ion access token to enable 3D building visualization.</p>
+                            <p><a href="https://ion.cesium.com/signup/" target="_blank">Get Free Cesium Ion Token</a></p>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+        
+        // Load 3DBAG 3D Tiles
+        async function load3DBagTiles() {
+            try {
+                const tileset = await Cesium.Cesium3DTileset.fromUrl(
+                    'https://data.3dbag.nl/v20250903/cesium3dtiles/lod22/tileset.json'
+                );
+                cesiumViewer.scene.primitives.add(tileset);
+                
+                // Style the buildings with better materials and colors
+                tileset.style = new Cesium.Cesium3DTileStyle({
+                    color: {
+                        conditions: [
+                            ["true", "color('#E6E6E6', 1.0)"] // Light gray with full opacity
+                        ]
+                    }
+                });
+                
+                // Enhance material properties for better lighting response
+                tileset.readyPromise.then(function() {
+                    // Apply material enhancements to all tiles
+                    const cache = tileset._cache;
+                    cache.list.forEach(function(tile) {
+                        if (tile.content && tile.content._model) {
+                            const model = tile.content._model;
+                            // Enable lighting calculations
+                            model.shadows = Cesium.ShadowMode.ENABLED;
+                            model.silhouetteSize = 0.0;
+                        }
+                    });
+                });
+                
+                console.log('3DBAG tiles loaded successfully');
+            } catch (error) {
+                console.error('Error loading 3DBAG tiles:', error);
+            }
+        }
+
+        // Set marker and update coordinates with synchronization
+        function setMarker(location, source = 'google') {
+            if (isUpdatingFromSync) return;
+            
+            const lat = typeof location.lat === 'function' ? location.lat() : location.lat;
+            const lng = typeof location.lng === 'function' ? location.lng() : location.lng;
+            console.log("Select", lng, lat, "from", source);
+            
+            // Update coordinates
+            selectedCoordinates = { lat, lng };
+            
+            // Update form fields
+            document.getElementById('latitude').value = selectedCoordinates.lat.toFixed(6);
+            document.getElementById('longitude').value = selectedCoordinates.lng.toFixed(6);
+            
+            // Sync between viewers
+            isUpdatingFromSync = true;
+            
+            if (map) {
+                if (marker) {
+                    marker.setMap(null);
+                }
+                marker = new google.maps.Marker({
+                    position: { lat, lng },
+                    map: map,
+                    title: 'Selected Location',
+                    animation: google.maps.Animation.DROP,
+                    icon: {
+                        url: 'https://maps.google.com/mapfiles/ms/icons/red-dot.png'
+                    }
+                });
+
+                setTimeout(() => { map.setCenter({ lat, lng }); }, 1000);
+            }
+            
+            if (source !== 'cesium' && cesiumViewer) {
+                // Update Cesium viewer
+                // Create a vertical marker - position the point at 100m height for visibility
+                console.log('Creating marker at:', lng, lat);
+
+                cesiumViewer.entities.removeAll();
+                for (let h = 0; h < 60; h++) {
+                    cesiumViewer.entities.add({
+                        position: Cesium.Cartesian3.fromDegrees(lng, lat, h),
+                        point: {
+                            pixelSize: 25,
+                            color: Cesium.Color.RED.withAlpha(0.3),
+                            heightReference: Cesium.HeightReference.RELATIVE_TO_3D_TILE
+                        }
+                    });
+                }
+                
+                // Only update position, keep current zoom level
+                const currentHeight = cesiumViewer.camera.positionCartographic.height;
+                cesiumViewer.camera.flyTo({
+                    destination: Cesium.Cartesian3.fromDegrees(lng, cesiumLatitude(lat, currentHeight), currentHeight),
+                    orientation: {
+                        heading: 0.0,                           // North up
+                        pitch: -0.8 * Cesium.Math.PI_OVER_TWO,  // 80% toward top-down (-72°)
+                        roll: 0.0                               // Level
+                    },
+                    duration: 1.0
+                });
+            }
+            
+            setTimeout(() => {
+                isUpdatingFromSync = false;
+            }, 100);
+            
+            // Enable submit button
+            document.getElementById('submitBtn').disabled = false;
+            
+            // Update sync status
+            updateSyncStatus(`📍 Location selected: ${lat.toFixed(4)}, ${lng.toFixed(4)}`, true);
+            
+            // Hide any previous status messages
+            hideStatusMessage();
+        }
+        
+        // Update synchronization status
+        function updateSyncStatus(message, isActive) {
+            const statusDiv = document.getElementById('syncStatus');
+            statusDiv.textContent = message;
+            statusDiv.className = 'sync-status ' + (isActive ? 'sync-active' : 'sync-inactive');
+        }
+        
+        // Synchronize Google Maps zoom to Cesium
+        function syncZoomToCesium(googleZoom) {
+            if (!cesiumViewer || isUpdatingFromSync) return;
+            
+            isUpdatingFromSync = true;
+            
+            // Convert Google Maps zoom level to appropriate Cesium camera height
+            // Google Maps zoom levels: 1 (world) to ~20 (building level)
+            // Higher zoom = lower altitude in Cesium
+            //
+            // let altitude = 1219;
+            // if (googleZoom <= 12) altitude = 9750;
+            // else if (googleZoom <= 13) altitude = 4875;
+            // else if (googleZoom <= 14) altitude = 2438;
+            // else if (googleZoom <= 15) altitude = 1219;
+            // else if (googleZoom <= 16) altitude = 610;
+            // else if (googleZoom <= 17) altitude = 305;
+            // else if (googleZoom <= 18) altitude = 152;
+            // else altitude = 76;
+            const altitude = zoomToHeight(googleZoom);
+            
+            const center = map.getCenter();
+            
+            const destination = Cesium.Cartesian3.fromDegrees(
+                center.lng(), 
+                center.lat(), 
+                altitude
+            );
+            console.log("Google zoom:", googleZoom, "-> Cesium altitude:", altitude);
+            console.log("Location:", center.lng(), center.lat(), "-", destination);
+
+
+            cesiumViewer.camera.setView({
+                destination: Cesium.Cartesian3.fromDegrees(
+                    center.lng(), 
+                    cesiumLatitude(center.lat(), altitude), 
+                    altitude
+                ),
+                orientation: {
+                    heading: 0.0,                           // North up
+                    pitch: -0.8 * Cesium.Math.PI_OVER_TWO,  // 80% toward top-down (-72°)
+                    roll: 0.0                               // Level
+                }
+            });
+            
+            setTimeout(() => {
+                isUpdatingFromSync = false;
+            }, 500);
+        }
+        
+        // Synchronize Cesium zoom to Google Maps
+        function syncZoomToGoogle() {
+            if (!map || isUpdatingFromSync) return;
+            
+            isUpdatingFromSync = true;
+            
+            const cameraHeight = cesiumViewer.camera.positionCartographic.height;
+            
+            // Convert Cesium camera height to Google Maps zoom level
+            //
+            // let googleZoom = 1219;
+            // if (cameraHeight >= 9750) googleZoom = 12;
+            // else if (cameraHeight >= 4875) googleZoom = 13;
+            // else if (cameraHeight >= 2438) googleZoom = 14;
+            // else if (cameraHeight >= 1219) googleZoom = 15;
+            // else if (cameraHeight >= 610) googleZoom = 16;
+            // else if (cameraHeight >= 305) googleZoom = 17;
+            // else if (cameraHeight >= 152) googleZoom = 18;
+            // else if (cameraHeight >= 0) googleZoom = 19;
+            const googleZoom = heightToZoom(cameraHeight);
+
+            const cameraPosition = cesiumViewer.camera.positionCartographic;
+            const longitude = Cesium.Math.toDegrees(cameraPosition.longitude);
+            const latitude = Cesium.Math.toDegrees(cameraPosition.latitude);
+            
+            console.log("Google zoom:", googleZoom, "<- Cesium altitude:", cameraHeight);
+            console.log("Location:", latitude, longitude, "-", cameraPosition.longitude, cameraPosition.latitude);
+
+            map.setCenter({ lat: latitude, lng: longitude });
+            map.setZoom(googleZoom);
+            
+            setTimeout(() => {
+                isUpdatingFromSync = false;
+            }, 500);
+        }
+        
+        // Initialize basic lighting
+        function initializeLighting() {
+            // if (!cesiumViewer) return;
+            
+            // // Always set basic sun and time
+            // cesiumViewer.scene.sun = new Cesium.Sun();
+            // cesiumViewer.scene.sun.glowFactor = 0.0;
+            
+            // const julianDate = new Cesium.JulianDate();
+            // Cesium.JulianDate.fromDate(new Date('2024-06-21T12:00:00Z'), julianDate);
+            // cesiumViewer.clock.currentTime = julianDate;
+            
+            // // Start with minimal lighting for performance
+            // cesiumViewer.shadows = false;
+            // cesiumViewer.terrainShadows = Cesium.ShadowMode.DISABLED;
+            // cesiumViewer.scene.light = undefined;
+        }
+        
+        // Optimize lighting based on camera zoom level
+        function optimizeLightingForZoom() {
+            // if (!cesiumViewer) return;
+            
+            // const cameraHeight = cesiumViewer.camera.positionCartographic.height;
+            
+            // // Neighborhood level and below (approximately Google Maps zoom 15+)
+            // // This corresponds to camera heights below ~1220 meters
+            // const isNeighborhoodOrCloser = cameraHeight < 1220;
+            
+            // if (isNeighborhoodOrCloser) {
+            //     // Enable enhanced lighting for detailed view
+            //     if (!cesiumViewer.shadows) {
+            //         cesiumViewer.shadows = true;
+            //         cesiumViewer.terrainShadows = Cesium.ShadowMode.ENABLED;
+                    
+            //         cesiumViewer.scene.light = new Cesium.DirectionalLight({
+            //             direction: new Cesium.Cartesian3(-0.5, -0.5, -0.6),
+            //             color: new Cesium.Color(1.0, 1.0, 1.0, 1.0),
+            //             intensity: 2.0
+            //         });
+                    
+            //         console.log('Enhanced lighting enabled for neighborhood view');
+            //     }
+            // } else {
+            //     // Disable enhanced lighting for city/regional view (better performance)
+            //     if (cesiumViewer.shadows) {
+            //         cesiumViewer.shadows = false;
+            //         cesiumViewer.terrainShadows = Cesium.ShadowMode.DISABLED;
+            //         cesiumViewer.scene.light = undefined;
+                    
+            //         console.log('Enhanced lighting disabled for city/regional view');
+            //     }
+            // }
+        }
+
+        // Clear selection from both viewers
+        function clearSelection() {
+            // Clear Google Maps marker
+            if (marker) {
+                marker.setMap(null);
+                marker = null;
+            }
+            
+            // Clear Cesium marker
+            if (cesiumMarker && cesiumViewer) {
+                cesiumViewer.entities.remove(cesiumMarker);
+                cesiumMarker = null;
+            }
+            
+            selectedCoordinates = null;
+            document.getElementById('latitude').value = '';
+            document.getElementById('longitude').value = '';
+            document.getElementById('submitBtn').disabled = true;
+            hideStatusMessage();
+            updateSyncStatus('📡 Map synchronization: Waiting for location selection', false);
+        }
+
+        // Show status message
+        function showStatusMessage(message, isSuccess = true) {
+            const statusDiv = document.getElementById('statusMessage');
+            statusDiv.textContent = message;
+            statusDiv.className = 'status-message ' + (isSuccess ? 'status-success' : 'status-error');
+            statusDiv.style.display = 'block';
+        }
+
+        // Hide status message
+        function hideStatusMessage() {
+            document.getElementById('statusMessage').style.display = 'none';
+        }
+
+        // Handle form submission
+        document.getElementById('coordinatesForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            if (!selectedCoordinates) {
+                showStatusMessage('Please select a location on the map first.', false);
+                return;
+            }
+
+            // Navigate to form.html with coordinates in URL anchor
+            const lat = selectedCoordinates.lat.toFixed(6);
+            const lng = selectedCoordinates.lng.toFixed(6);
+            const formUrl = `form.html#lat=${lat},lng=${lng}`;
+            
+            console.log('Navigating to questionnaire with coordinates:', { lat, lng });
+            console.log('URL:', formUrl);
+            
+            // Navigate to the form page
+            window.location.href = formUrl;
+        });
+
+        // Handle clear button
+        document.getElementById('clearBtn').addEventListener('click', clearSelection);
+
+        // Try to get user's current location (if in Netherlands)
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const userLocation = {
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude
+                    };
+                    
+                    // Check if location is roughly in Netherlands bounds
+                    if (userLocation.lat >= 50.5 && userLocation.lat <= 53.7 && 
+                        userLocation.lng >= 3.2 && userLocation.lng <= 7.3) {
+                        map.setCenter(userLocation);
+                        map.setZoom(15);
+                        
+                        if (cesiumViewer) {
+                            cesiumViewer.camera.setView({
+                                destination: Cesium.Cartesian3.fromDegrees(
+                                    userLocation.lng, 
+                                    cesiumLatitude(userLocation.lat, 2400), 
+                                    2400
+                                )
+                            });
+                        }
+                        
+                        updateSyncStatus('📍 Using your current location in Netherlands', true);
+                    } else {
+                        updateSyncStatus('📍 Centered on Amsterdam (outside Netherlands detected)', false);
+                    }
+                },
+                () => {
+                    console.log('Could not get user location');
+                    updateSyncStatus('📍 Centered on Amsterdam (location access denied)', false);
+                }
+            );
+        }
+    </script>
+
+    <!-- Google Maps JavaScript API -->
+    <script async defer
+        src="https://maps.googleapis.com/maps/api/js?key=&libraries=places&callback=initMap">
+    </script>
+</body>
+</html>
