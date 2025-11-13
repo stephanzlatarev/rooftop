@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rooftop Questionnaire</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .form-container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .question {
+            margin-bottom: 25px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #555;
+        }
+        
+        input[type="text"],
+        input[type="number"],
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        textarea:focus {
+            border-color: #4CAF50;
+            outline: none;
+        }
+        
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+        
+        .submit-btn {
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+            margin-top: 20px;
+        }
+        
+        .submit-btn:hover {
+            background-color: #45a049;
+        }
+        
+        .readonly {
+            background-color: #f9f9f9;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <h1>Rooftop Questionnaire</h1>
+        
+        <form id="locationForm">
+            <div class="question">
+                <label for="latitude">1. Latitude:</label>
+                <input type="number" id="latitude" name="latitude" step="any" class="readonly" readonly>
+            </div>
+            
+            <div class="question">
+                <label for="longitude">2. Longitude:</label>
+                <input type="number" id="longitude" name="longitude" step="any" class="readonly" readonly>
+            </div>
+            
+            <div class="question">
+                <label for="description">3. Please describe this rooftop location:</label>
+                <textarea id="description" name="description" placeholder="Enter your description here..."></textarea>
+            </div>
+            
+            <button type="submit" class="submit-btn">Submit</button>
+        </form>
+    </div>
+
+    <script>
+        // Function to parse URL anchor and extract lat/lng values
+        function parseLocationFromAnchor() {
+            const hash = window.location.hash;
+            
+            if (hash) {
+                // Remove the # symbol
+                const hashContent = hash.substring(1);
+                
+                // Parse the lat=<lat>,lng=<lng> format
+                const match = hashContent.match(/lat=([^,]+),lng=([^,]+)/);
+                
+                if (match) {
+                    const latitude = parseFloat(match[1]);
+                    const longitude = parseFloat(match[2]);
+                    
+                    // Populate the form fields
+                    document.getElementById('latitude').value = latitude;
+                    document.getElementById('longitude').value = longitude;
+                    
+                    console.log('Location parsed:', { latitude, longitude });
+                } else {
+                    console.log('No valid lat/lng format found in URL anchor');
+                }
+            } else {
+                console.log('No anchor found in URL');
+            }
+        }
+        
+        // Parse location when page loads
+        window.addEventListener('load', parseLocationFromAnchor);
+        
+        // Also parse if hash changes (for single-page app scenarios)
+        window.addEventListener('hashchange', parseLocationFromAnchor);
+        
+        // Handle form submission
+        document.getElementById('locationForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = {
+                latitude: document.getElementById('latitude').value,
+                longitude: document.getElementById('longitude').value,
+                description: document.getElementById('description').value
+            };
+            
+            console.log('Form submitted:', formData);
+            
+            // You can add your form submission logic here
+            // For example, send data to a server or display a confirmation
+            alert('Questionnaire submitted successfully!\n\n' + 
+                  'Latitude: ' + formData.latitude + '\n' +
+                  'Longitude: ' + formData.longitude + '\n' +
+                  'Description: ' + formData.description);
+        });
+    </script>
+</body>
+</html>
